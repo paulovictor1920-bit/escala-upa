@@ -109,6 +109,27 @@
   .msg{background:var(--card);border:1px dashed var(--linha);border-radius:12px;
     padding:18px;text-align:center;color:var(--texto-suave)}
   footer{text-align:center;font-size:.7rem;color:var(--texto-suave);margin-top:20px}
+
+  /* ---- Solicitação de troca ---- */
+  .fab{position:fixed;right:16px;bottom:16px;background:var(--verde);color:#fff;border:none;
+    border-radius:99px;padding:14px 20px;font-size:.95rem;font-weight:700;font-family:inherit;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;z-index:40}
+  .campo{margin-top:12px}
+  .campo label{display:block;font-size:.8rem;font-weight:700;color:var(--texto-suave);margin-bottom:4px}
+  .campo input,.campo select,.campo textarea{width:100%;background:var(--fundo);
+    border:1px solid var(--linha);border-radius:10px;padding:10px;font-family:inherit;
+    font-size:.95rem;color:var(--texto)}
+  .campo textarea{min-height:70px;resize:vertical}
+  .btn-enviar{width:100%;margin-top:16px;background:var(--verde);color:#fff;border:none;
+    border-radius:12px;padding:13px;font-size:1rem;font-weight:700;font-family:inherit;cursor:pointer}
+  .btn-enviar:disabled{opacity:.6}
+  .aviso{margin-top:10px;font-size:.82rem;border-radius:10px;padding:10px;display:none}
+  .aviso.erro{background:#FDE8E8;color:#9B1C1C;display:block}
+  .aviso.ok{background:#DEF7EC;color:#03543F;display:block}
+  .aviso.atencao{background:#FDF6B2;color:#723B13;display:block}
+  body[data-tema="escuro"] .aviso.erro{background:#3B1219;color:#F8B4B4}
+  body[data-tema="escuro"] .aviso.ok{background:#0E2E25;color:#84E1BC}
+  body[data-tema="escuro"] .aviso.atencao{background:#372A12;color:#FCE96A}
 </style>
 </head>
 <body>
@@ -143,8 +164,38 @@
   <div class="legenda">
     <span class="ld">Diurno</span><span class="ln">Noturno</span><span class="la">Apoio</span>
   </div>
-  <footer>Escala de Plantões UPA · v0.2</footer>
+  <footer>Escala de Plantões UPA · v0.3</footer>
 </main>
+
+<button class="fab" id="btn-troca">⇄ Solicitar troca</button>
+
+<div class="fundo-modal" id="fundo-troca">
+  <div class="modal">
+    <div class="modal-cab">
+      <h3 style="text-transform:none">Solicitar troca de plantão</h3>
+      <button class="fechar" id="troca-fechar">✕</button>
+    </div>
+    <div class="campo">
+      <label for="t-data">Data do plantão</label>
+      <input type="date" id="t-data">
+    </div>
+    <div class="campo">
+      <label for="t-plantao">Plantão original</label>
+      <select id="t-plantao"><option value="">Escolha a data primeiro</option></select>
+    </div>
+    <div class="campo">
+      <label for="t-assume">Médico que assume</label>
+      <input type="text" id="t-assume" list="lista-medicos" placeholder="Digite para buscar pelo nome…" autocomplete="off">
+      <datalist id="lista-medicos"></datalist>
+    </div>
+    <div class="campo">
+      <label for="t-motivo">Motivo (opcional)</label>
+      <textarea id="t-motivo" placeholder="Ex.: consulta, viagem, atestado…"></textarea>
+    </div>
+    <div class="aviso" id="t-aviso"></div>
+    <button class="btn-enviar" id="t-enviar">Enviar solicitação</button>
+  </div>
+</div>
 
 <div class="fundo-modal" id="fundo-modal">
   <div class="modal">
@@ -356,6 +407,79 @@ document.getElementById('modal-fechar').onclick =
   ()=> document.getElementById('fundo-modal').classList.remove('aberto');
 document.getElementById('fundo-modal').onclick = e=>{
   if(e.target.id==='fundo-modal') e.target.classList.remove('aberto');
+};
+
+/* ---------- SOLICITAR TROCA ---------- */
+let trocaPlantoes = [];
+const elFundoTroca = document.getElementById('fundo-troca');
+
+document.getElementById('btn-troca').onclick = ()=>{
+  document.getElementById('lista-medicos').innerHTML =
+    Object.values(medicos).map(m=>'<option value="'+m.nome_completo+'">').join('');
+  ['t-data','t-assume','t-motivo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t-plantao').innerHTML='<option value="">Escolha a data primeiro</option>';
+  const av=document.getElementById('t-aviso'); av.className='aviso'; av.textContent='';
+  document.getElementById('t-enviar').disabled=false;
+  elFundoTroca.classList.add('aberto');
+};
+document.getElementById('troca-fechar').onclick = ()=> elFundoTroca.classList.remove('aberto');
+elFundoTroca.onclick = e=>{ if(e.target.id==='fundo-troca') elFundoTroca.classList.remove('aberto'); };
+
+document.getElementById('t-data').onchange = async function(){
+  const sel = document.getElementById('t-plantao');
+  sel.innerHTML = '<option value="">Carregando…</option>';
+  const {data:ps} = await db.from('plantoes').select('*').eq('data', this.value);
+  trocaPlantoes = (ps||[]).filter(p=>p.medico_id);
+  if(!trocaPlantoes.length){
+    sel.innerHTML = '<option value="">Nenhum plantão nesta data</option>'; return;
+  }
+  sel.innerHTML = '<option value="">Selecione…</option>'+trocaPlantoes.map(p=>{
+    const s = setores.find(x=>x.id===p.setor_id);
+    const hor = p.turno==='apoio' && p.hora_inicio
+      ? ' ('+p.hora_inicio.slice(0,5)+'–'+(p.hora_fim||'').slice(0,5)+')' : '';
+    return '<option value="'+p.id+'">'+(s?s.nome:'?')+' · '+p.turno+hor+' · '+nomeMedico(p.medico_id)+'</option>';
+  }).join('');
+};
+
+function fimDoPlantao(p){
+  const f = new Date(p.data+'T12:00:00');
+  if(p.turno==='diurno'){ f.setHours(INICIO_NOTURNO,0,0,0); }
+  else if(p.turno==='noturno'){ f.setDate(f.getDate()+1); f.setHours(INICIO_DIURNO,0,0,0); }
+  else if(p.hora_fim){ const [h,m]=p.hora_fim.split(':'); f.setHours(+h,+m,0,0); }
+  return f;
+}
+
+document.getElementById('t-enviar').onclick = async ()=>{
+  const av = document.getElementById('t-aviso');
+  const mostrar=(cls,txt)=>{ av.className='aviso '+cls; av.textContent=txt; };
+  const pid = document.getElementById('t-plantao').value;
+  const nomeAssume = document.getElementById('t-assume').value.trim();
+  const motivo = document.getElementById('t-motivo').value.trim();
+  const p = trocaPlantoes.find(x=>x.id===pid);
+  if(!p) return mostrar('erro','Selecione a data e o plantão original.');
+  const assume = Object.values(medicos).find(m=>m.nome_completo===nomeAssume);
+  if(!assume) return mostrar('erro','Escolha o médico que assume tocando num nome da lista.');
+  if(assume.id===p.medico_id) return mostrar('erro','O médico que assume não pode ser o mesmo já escalado.');
+  if(fimDoPlantao(p) < new Date()) return mostrar('erro','Este plantão já passou — não é possível solicitar troca.');
+  const btn = document.getElementById('t-enviar');
+  btn.disabled = true; mostrar('atencao','Enviando…');
+  const {data:mesmoTurno} = await db.from('plantoes').select('id')
+    .eq('data',p.data).eq('turno',p.turno).eq('medico_id',assume.id);
+  const conflito = (mesmoTurno||[]).length > 0;
+  const {error} = await db.from('trocas').insert({
+    plantao_id: p.id, medico_original_id: p.medico_id,
+    medico_assume_id: assume.id, motivo: motivo || null, status:'pendente'
+  });
+  if(error){ btn.disabled=false; return mostrar('erro','Erro ao enviar: '+error.message); }
+  await db.from('auditoria').insert({
+    evento:'solicitacao_troca', autor:'visão pública',
+    detalhes:{ plantao_id:p.id, data:p.data, turno:p.turno,
+      original:nomeMedico(p.medico_id), assume:assume.nome_completo,
+      conflito_mesmo_turno:conflito }
+  });
+  mostrar('ok','Solicitação enviada! Ela vale somente após aprovação da coordenação.'+
+    (conflito ? ' Atenção: esse médico já tem plantão nesse turno — a coordenação será alertada.' : ''));
+  setTimeout(()=> elFundoTroca.classList.remove('aberto'), 3500);
 };
 
 /* ---------- NAVEGAÇÃO ---------- */

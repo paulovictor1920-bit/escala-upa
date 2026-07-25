@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escala UPA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --verde:#0E6B5C; --verde-escuro:#0A4A40; --fundo:#F5F8F7; --card:#FFFFFF;
+    --texto:#1C2B28; --texto-suave:#5E6E6A; --linha:#E3EAE8;
+    --sol-bg:#FFF4DC; --sol-tx:#8A5A00; --sol-borda:#F0D9A0;
+    --lua-bg:#E6E9FB; --lua-tx:#3B3F8C; --lua-borda:#C7CCF0;
+    --apoio-bg:#DDF2EE; --apoio-tx:#0E6B5C; --apoio-borda:#A9DcD2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Archivo',system-ui,sans-serif;background:var(--fundo);color:var(--texto);
+       font-size:16px;line-height:1.5;padding-bottom:60px}
+  .topo{background:var(--verde);color:#fff;padding:14px 16px;display:flex;align-items:baseline;gap:8px}
+  .topo h1{font-size:1.15rem;font-weight:700;letter-spacing:.02em}
+  .topo span{font-size:.78rem;opacity:.85}
+  main{max-width:640px;margin:0 auto;padding:16px}
+
+  /* ---- Cartão AGORA ---- */
+  .agora{border-radius:16px;padding:18px 16px;margin-bottom:20px;border:1px solid var(--linha)}
+  .agora.diurno{background:linear-gradient(160deg,#FFFBEF,#FFF2D6);border-color:var(--sol-borda)}
+  .agora.noturno{background:linear-gradient(160deg,#232659,#3B3F8C);color:#EEF0FF;border-color:#3B3F8C}
+  .agora .rotulo{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+  .agora h2{font-size:1.25rem;font-weight:700;margin:2px 0 10px}
+  .agora .grupo{margin-top:10px}
+  .agora .setor-nome{font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7}
+  .agora ul{list-style:none;margin-top:2px}
+  .agora li{padding:2px 0;font-weight:500}
+  .agora .vazio{opacity:.75;font-style:italic}
+
+  /* ---- Navegação de mês ---- */
+  .mes-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .mes-nav button{background:var(--card);border:1px solid var(--linha);border-radius:10px;
+    width:42px;height:42px;font-size:1.1rem;color:var(--verde);cursor:pointer}
+  .mes-nav button:active{background:var(--linha)}
+  .mes-nav .mes-titulo{font-weight:700;font-size:1.05rem;text-transform:capitalize}
+
+  /* ---- Dias ---- */
+  details.dia{background:var(--card);border:1px solid var(--linha);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  details.dia summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+  details.dia summary::-webkit-details-marker{display:none}
+  .dia-num{font-weight:700;font-size:1.05rem;min-width:78px}
+  .dia-info{font-size:.82rem;color:var(--texto-suave);flex:1}
+  .hoje-tag{background:var(--verde);color:#fff;font-size:.68rem;font-weight:700;
+    padding:2px 8px;border-radius:99px;letter-spacing:.05em}
+  details[open].dia summary{border-bottom:1px solid var(--linha)}
+  .dia-corpo{padding:10px 14px 14px}
+  .turno-bloco{margin-top:10px}
+  .turno-badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;padding:3px 10px;border-radius:99px;border:1px solid}
+  .turno-badge.diurno{background:var(--sol-bg);color:var(--sol-tx);border-color:var(--sol-borda)}
+  .turno-badge.noturno{background:var(--lua-bg);color:var(--lua-tx);border-color:var(--lua-borda)}
+  .turno-badge.apoio{background:var(--apoio-bg);color:var(--apoio-tx);border-color:var(--apoio-borda)}
+  .setor-linha{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--linha);font-size:.92rem}
+  .setor-linha:last-child{border-bottom:none}
+  .setor-rotulo{min-width:118px;color:var(--texto-suave);font-size:.8rem;padding-top:2px}
+  .medicos-lista{flex:1}
+  .troca-nota{display:block;font-size:.74rem;color:var(--texto-suave)}
+  .msg{background:var(--card);border:1px dashed var(--linha);border-radius:12px;
+    padding:20px;text-align:center;color:var(--texto-suave)}
+  footer{text-align:center;font-size:.72rem;color:var(--texto-suave);margin-top:24px}
+</style>
+</head>
+<body>
+<header class="topo"><h1>Escala UPA</h1><span>plantões e trocas</span></header>
+<main>
+  <section id="agora" class="agora diurno">
+    <div class="rotulo">De plantão agora</div>
+    <h2 id="agora-titulo">Carregando…</h2>
+    <div id="agora-conteudo"></div>
+  </section>
+
+  <div class="mes-nav">
+    <button id="mes-ant" aria-label="Mês anterior">‹</button>
+    <div class="mes-titulo" id="mes-titulo"></div>
+    <button id="mes-prox" aria-label="Próximo mês">›</button>
+  </div>
+  <div id="calendario"><div class="msg">Carregando escala…</div></div>
+  <footer>Escala de Plantões UPA · v0.1 · atualizada em tempo real</footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ================== CONFIGURAÇÃO ================== */
+const SUPABASE_URL = "https://tujryfvqfbaspdxkaccc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SI1_j-fjtTLzJMNaLGPNaQ_Xap0IrGt";
+// Horários dos turnos (confirme se estão corretos na sua UPA):
+const INICIO_DIURNO = 7;   // diurno começa às 07:00
+const INICIO_NOTURNO = 19; // noturno começa às 19:00
+/* ================================================== */
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let medicos = {}, setores = [];
+let mesAtual = new Date(); mesAtual.setDate(1);
+
+const fmtData = d => d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'});
+const isoData = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+async function carregarBase(){
+  const [m,s] = await Promise.all([
+    db.from('medicos_publico').select('*'),
+    db.from('setores').select('*').order('ordem')
+  ]);
+  (m.data||[]).forEach(x => medicos[x.id]=x);
+  setores = s.data||[];
+}
+
+function turnoAgora(){
+  const agora = new Date(), h = agora.getHours();
+  if(h >= INICIO_DIURNO && h < INICIO_NOTURNO) return {data:new Date(agora), turno:'diurno'};
+  const d = new Date(agora);
+  if(h < INICIO_DIURNO) d.setDate(d.getDate()-1); // madrugada = noturno de ontem
+  return {data:d, turno:'noturno'};
+}
+
+function nomeMedico(id){ return medicos[id] ? medicos[id].nome_completo : '—'; }
+
+function linhaPlantao(p){
+  let extra = '';
+  if(p.medico_original_id && p.medico_id && p.medico_original_id !== p.medico_id)
+    extra = `<span class="troca-nota">troca aprovada · antes: ${nomeMedico(p.medico_original_id)}</span>`;
+  if(p.turno==='apoio' && p.hora_inicio)
+    extra += `<span class="troca-nota">apoio · ${p.hora_inicio.slice(0,5)}–${(p.hora_fim||'').slice(0,5)}</span>`;
+  return `<div>${p.medico_id ? nomeMedico(p.medico_id) : '<i>vaga em aberto</i>'}${extra}</div>`;
+}
+
+async function renderAgora(){
+  const {data,turno} = turnoAgora();
+  const el = document.getElementById('agora');
+  el.className = 'agora '+turno;
+  document.getElementById('agora-titulo').textContent =
+    (turno==='diurno'?'☀️ Diurno':'🌙 Noturno')+' · '+data.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  const {data:ps} = await db.from('plantoes').select('*')
+    .eq('data', isoData(data)).in('turno',[turno,'apoio']);
+  const alvo = document.getElementById('agora-conteudo');
+  const agoraHM = new Date().toTimeString().slice(0,5);
+  const ativos = (ps||[]).filter(p => p.turno!=='apoio' ||
+    (p.hora_inicio && p.hora_inicio.slice(0,5)<=agoraHM && (p.hora_fim||'23:59').slice(0,5)>=agoraHM));
+  if(!ativos.length){ alvo.innerHTML = '<div class="vazio">Nenhum plantão cadastrado para este turno ainda.</div>'; return; }
+  alvo.innerHTML = setores.map(s=>{
+    const doSetor = ativos.filter(p=>p.setor_id===s.id);
+    if(!doSetor.length) return '';
+    return `<div class="grupo"><div class="setor-nome">${s.nome}</div>
+      <ul>${doSetor.map(p=>`<li>${p.medico_id?nomeMedico(p.medico_id):'<i>vaga em aberto</i>'}${p.turno==='apoio'?' <small>(apoio)</small>':''}</li>`).join('')}</ul></div>`;
+  }).join('');
+}
+
+async function renderMes(){
+  const y=mesAtual.getFullYear(), m=mesAtual.getMonth();
+  document.getElementById('mes-titulo').textContent =
+    mesAtual.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const ini = new Date(y,m,1), fim = new Date(y,m+1,0);
+  const {data:ps,error} = await db.from('plantoes').select('*')
+    .gte('data',isoData(ini)).lte('data',isoData(fim)).order('data');
+  const cal = document.getElementById('calendario');
+  if(error){ cal.innerHTML = `<div class="msg">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!ps || !ps.length){ cal.innerHTML = '<div class="msg">Nenhum plantão cadastrado neste mês ainda.</div>'; return; }
+  const porDia = {};
+  ps.forEach(p => { (porDia[p.data] = porDia[p.data]||[]).push(p); });
+  const hoje = isoData(new Date());
+  cal.innerHTML = Object.keys(porDia).sort().map(dia=>{
+    const dt = new Date(dia+'T12:00:00');
+    const itens = porDia[dia];
+    const corpo = ['diurno','noturno','apoio'].map(t=>{
+      const doTurno = itens.filter(p=>p.turno===t);
+      if(!doTurno.length) return '';
+      const linhas = setores.map(s=>{
+        const ds = doTurno.filter(p=>p.setor_id===s.id);
+        if(!ds.length) return '';
+        return `<div class="setor-linha"><div class="setor-rotulo">${s.nome}</div>
+          <div class="medicos-lista">${ds.map(linhaPlantao).join('')}</div></div>`;
+      }).join('');
+      return `<div class="turno-bloco"><span class="turno-badge ${t}">${t}</span>${linhas}</div>`;
+    }).join('');
+    return `<details class="dia" ${dia===hoje?'open':''}>
+      <summary><span class="dia-num">${fmtData(dt)}</span>
+        <span class="dia-info">${itens.length} plantão(ões)</span>
+        ${dia===hoje?'<span class="hoje-tag">HOJE</span>':''}</summary>
+      <div class="dia-corpo">${corpo}</div></details>`;
+  }).join('');
+}
+
+document.getElementById('mes-ant').onclick = ()=>{ mesAtual.setMonth(mesAtual.getMonth()-1); renderMes(); };
+document.getElementById('mes-prox').onclick = ()=>{ mesAtual.setMonth(mesAtual.getMonth()+1); renderMes(); };
+
+(async ()=>{ await carregarBase(); renderAgora(); renderMes(); })();
+</script>
+</body>
+</html>
